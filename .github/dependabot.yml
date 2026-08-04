@@ -8,7 +8,18 @@ updates:
       day: monday
       time: "09:00"
       timezone: Asia/Kolkata
-    open-pull-requests-limit: 10
+    groups:
+      npm-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+    open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
     directory: /
@@ -17,4 +28,15 @@ updates:
       day: monday
       time: "09:30"
       timezone: Asia/Kolkata
-    open-pull-requests-limit: 10
+    groups:
+      actions-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+    open-pull-requests-limit: 5
