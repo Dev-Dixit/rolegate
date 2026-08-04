@@ -1,0 +1,13 @@
+packages:
+  - "packages/*"
+  - "examples/*"
+
+autoInstallPeers: false
+linkWorkspacePackages: true
+saveWorkspaceProtocol: rolling
+
+allowBuilds:
+  esbuild: true
+
+onlyBuiltDependencies:
+  - esbuild

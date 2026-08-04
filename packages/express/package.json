@@ -1,0 +1,76 @@
+{
+  "name": "@rolegate/express",
+  "version": "0.1.0",
+  "description": "Express 4 and 5 authorization middleware powered by RoleGate.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dev-Dixit/rolegate.git",
+    "directory": "packages/express"
+  },
+  "homepage": "https://github.com/Dev-Dixit/rolegate#readme",
+  "bugs": {
+    "url": "https://github.com/Dev-Dixit/rolegate/issues"
+  },
+  "keywords": [
+    "rbac",
+    "express",
+    "middleware",
+    "authorization",
+    "access-control",
+    "typescript"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "prebuild": "pnpm --filter @rolegate/core build",
+    "build": "tsup",
+    "pretest": "pnpm --filter @rolegate/core build",
+    "test": "vitest run",
+    "pretest:coverage": "pnpm --filter @rolegate/core build",
+    "test:coverage": "vitest run --coverage",
+    "pretypecheck": "pnpm --filter @rolegate/core build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rolegate/core": "workspace:^"
+  },
+  "peerDependencies": {
+    "express": "^4.18.0 || ^5.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/supertest": "^6.0.3",
+    "express": "^5.1.0",
+    "express4": "npm:express@^4.21.2",
+    "supertest": "^7.1.4"
+  }
+}

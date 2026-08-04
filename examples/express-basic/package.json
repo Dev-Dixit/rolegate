@@ -1,0 +1,24 @@
+{
+  "name": "@rolegate/example-express-basic",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "pretypecheck": "pnpm --filter @rolegate/express build",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rolegate/core": "workspace:^",
+    "@rolegate/express": "workspace:^",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}

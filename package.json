@@ -1,0 +1,48 @@
+{
+  "name": "rolegate",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Type-safe role and permission authorization for Node.js applications.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dev-Dixit/rolegate.git"
+  },
+  "homepage": "https://github.com/Dev-Dixit/rolegate#readme",
+  "bugs": {
+    "url": "https://github.com/Dev-Dixit/rolegate/issues"
+  },
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm --filter @rolegate/core --filter @rolegate/express build",
+    "changeset": "changeset",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "pack:check": "node scripts/pack-smoke.mjs",
+    "release": "pnpm build && changeset publish",
+    "test": "pnpm --recursive --if-present test",
+    "test:coverage": "pnpm --filter @rolegate/core test:coverage && pnpm --filter @rolegate/express test:coverage",
+    "typecheck": "pnpm --recursive --if-present typecheck",
+    "verify": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm pack:check"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.7",
+    "@eslint/js": "^9.32.0",
+    "@types/node": "^24.0.15",
+    "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^9.32.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.3.0",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0",
+    "vitest": "^3.2.4"
+  }
+}
