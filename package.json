@@ -1,6 +1,6 @@
 {
   "name": "rolegate",
-  "version": "0.0.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Type-safe role and permission authorization for Node.js applications.",
   "license": "MIT",
