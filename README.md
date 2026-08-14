@@ -21,16 +21,15 @@ The packages require Node.js 22 or newer and publish both ESM and CommonJS entry
 ## Five-minute Express setup
 
 ```sh
-pnpm add @rolegate/core @rolegate/express express
+npm install @rolegate/express express
 ```
 
 ```ts
 import express from "express";
-import { createRBAC } from "@rolegate/core";
-import { createExpressRBAC } from "@rolegate/express";
+import { createExpressRoleGate } from "@rolegate/express";
 
-const rbac = createRBAC({
-  permissions: ["articles:read", "articles:create", "articles:update"] as const,
+const { rbac, authorize } = createExpressRoleGate({
+  permissions: ["articles:read", "articles:create", "articles:update"],
   roles: {
     viewer: {
       permissions: ["articles:read"],
@@ -43,15 +42,10 @@ const rbac = createRBAC({
       permissions: ["*"],
     },
   },
+  getRoles: (request) => request.user?.roles,
 });
 
-const { authorize } = createExpressRBAC({
-  rbac,
-  getSubject: (request) => {
-    if (!request.user) return null;
-    return { roles: request.user.roles };
-  },
-});
+rbac.can({ roles: ["editor"] }, "articles:update"); // programmatic checks use the same policy
 
 const app = express();
 app.patch("/articles/:id", authenticate(), authorize("articles:update"), updateArticle);
@@ -59,6 +53,11 @@ app.patch("/articles/:id", authenticate(), authorize("articles:update"), updateA
 
 Authentication middleware must run before authorization middleware. Never trust a role copied
 directly from an unsigned token, request header, query parameter, or request body.
+
+`getRoles` may be synchronous or asynchronous. Return `null` or `undefined` for an unauthenticated
+request, and return an array for an authenticated user. Empty arrays and unknown roles fail closed
+with `403`. For a shared engine or other advanced setup, use `createRBAC` from `@rolegate/core`
+with `createExpressRBAC`; see the Express package README.
 
 ## Policy behavior
 
@@ -72,7 +71,7 @@ directly from an unsigned token, request header, query parameter, or request bod
 - Ordinary access denial returns a decision or `false`; it does not throw.
 
 There are deliberately no partial wildcards, explicit deny rules, resource predicates, database
-lookups, policy mutation, NestJS adapters, or frontend helpers in v0.1.
+lookups, policy mutation, NestJS adapters, or frontend helpers in the current release.
 
 ## Development
 

@@ -1,11 +1,10 @@
 import express from "express";
 import type { Request, RequestHandler } from "express";
 
-import { createRBAC, type RBACSubject } from "@rolegate/core";
-import { createExpressRBAC } from "@rolegate/express";
+import { createExpressRoleGate } from "@rolegate/express";
 
-const rbac = createRBAC({
-  permissions: ["articles:read", "articles:create", "articles:update", "articles:delete"] as const,
+const { authorize } = createExpressRoleGate({
+  permissions: ["articles:read", "articles:create", "articles:update", "articles:delete"],
   roles: {
     viewer: {
       permissions: ["articles:read"],
@@ -18,25 +17,21 @@ const rbac = createRBAC({
       permissions: ["*"],
     },
   },
+  getRoles: (request) => (request as DemoRequest).demoRoles ?? null,
 });
 
 type Role = "viewer" | "editor" | "admin";
 type DemoRequest = Request & {
-  demoSubject?: RBACSubject<Role>;
+  demoRoles?: readonly Role[];
 };
 
 const authenticateDemoUser: RequestHandler = (request, _response, next) => {
   const user = request.header("x-demo-user");
   if (user === "viewer" || user === "editor" || user === "admin") {
-    (request as DemoRequest).demoSubject = { roles: [user] };
+    (request as DemoRequest).demoRoles = [user];
   }
   next();
 };
-
-const { authorize } = createExpressRBAC({
-  rbac,
-  getSubject: (request) => (request as DemoRequest).demoSubject ?? null,
-});
 
 const app = express();
 app.use(express.json());

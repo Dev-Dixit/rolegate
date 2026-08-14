@@ -4,9 +4,9 @@ import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import type { NextFunction, Request, Response } from "express";
 
-import { RBACUsageError, createRBAC } from "@rolegate/core";
+import { RBACConfigurationError, RBACUsageError, createRBAC } from "@rolegate/core";
 
-import { createExpressRBAC } from "../src/index.js";
+import { createExpressRBAC, createExpressRoleGate } from "../src/index.js";
 
 const factories = [
   ["Express 4", express4],
@@ -15,12 +15,7 @@ const factories = [
 
 function createPolicy() {
   return createRBAC({
-    permissions: [
-      "articles:read",
-      "articles:create",
-      "articles:update",
-      "articles:delete",
-    ] as const,
+    permissions: ["articles:read", "articles:create", "articles:update", "articles:delete"],
     roles: {
       viewer: {
         permissions: ["articles:read"],
@@ -36,26 +31,43 @@ function createPolicy() {
   });
 }
 
-function subjectFromHeader(requestValue: string | undefined) {
+function rolesFromHeader(requestValue: string | undefined) {
   if (requestValue === undefined) {
     return null;
   }
-  if (requestValue === "viewer" || requestValue === "editor" || requestValue === "admin") {
-    return { roles: [requestValue] } as const;
+  if (requestValue === "undefined") {
+    return undefined;
   }
-  return { roles: [requestValue] } as never;
+  if (requestValue === "empty") {
+    return [];
+  }
+  if (requestValue === "viewer" || requestValue === "editor" || requestValue === "admin") {
+    return [requestValue] as const;
+  }
+  return [requestValue] as never;
 }
 
 describe.each(factories)("%s integration", (_name, expressFactory) => {
   function createApp() {
     const app = expressFactory();
-    const rbac = createPolicy();
-    const middleware = createExpressRBAC({
-      rbac,
-      getSubject: async (incomingRequest) => {
+    const middleware = createExpressRoleGate({
+      permissions: ["articles:read", "articles:create", "articles:update", "articles:delete"],
+      roles: {
+        viewer: {
+          permissions: ["articles:read"],
+        },
+        editor: {
+          extends: ["viewer"],
+          permissions: ["articles:create", "articles:update"],
+        },
+        admin: {
+          permissions: ["*"],
+        },
+      },
+      getRoles: async (incomingRequest) => {
         await Promise.resolve();
         const value = incomingRequest.header("x-role");
-        return subjectFromHeader(value);
+        return rolesFromHeader(value);
       },
     });
 
@@ -92,15 +104,20 @@ describe.each(factories)("%s integration", (_name, expressFactory) => {
     await request(app).delete("/admin").set("x-role", "admin").expect(200, { ok: true });
   });
 
-  it("returns the stable default 401 response for missing subjects", async () => {
-    const response = await request(createApp()).get("/single").expect(401);
+  it("returns the stable default 401 response for null and undefined roles", async () => {
+    for (const role of [undefined, "undefined"]) {
+      const pendingRequest = request(createApp()).get("/single");
+      const response = await (role ? pendingRequest.set("x-role", role) : pendingRequest).expect(
+        401,
+      );
 
-    expect(response.body).toEqual({
-      error: {
-        code: "UNAUTHORIZED",
-        message: "Authentication required",
-      },
-    });
+      expect(response.body).toEqual({
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Authentication required",
+        },
+      });
+    }
   });
 
   it("returns the stable default 403 response without leaking policy details", async () => {
@@ -123,6 +140,10 @@ describe.each(factories)("%s integration", (_name, expressFactory) => {
     await request(createApp()).get("/single").set("x-role", "stale-role").expect(403);
   });
 
+  it("treats an empty role list as authenticated and forbidden", async () => {
+    await request(createApp()).get("/single").set("x-role", "empty").expect(403);
+  });
+
   it("denies any when every permission is missing and all when one is missing", async () => {
     const app = createApp();
 
@@ -132,14 +153,18 @@ describe.each(factories)("%s integration", (_name, expressFactory) => {
 
   it("supports an asynchronous custom denial handler", async () => {
     const app = expressFactory();
-    const rbac = createPolicy();
     const onDenied = vi.fn(async ({ response, status, decision }) => {
       await Promise.resolve();
       response.status(418).json({ originalStatus: status, reason: decision.reason });
     });
-    const { authorize } = createExpressRBAC({
-      rbac,
-      getSubject: () => null,
+    const { authorize } = createExpressRoleGate({
+      permissions: ["articles:read"],
+      roles: {
+        viewer: {
+          permissions: ["articles:read"],
+        },
+      },
+      getRoles: () => null,
       onDenied,
     });
 
@@ -169,13 +194,38 @@ describe.each(factories)("%s integration", (_name, expressFactory) => {
 
     await request(app).get("/").expect(500, { message: "subject lookup failed" });
   });
+  it("forwards role extraction errors to Express", async () => {
+    const app = expressFactory();
+    const { authorize } = createExpressRoleGate({
+      permissions: ["articles:read"],
+      roles: {
+        viewer: {
+          permissions: ["articles:read"],
+        },
+      },
+      getRoles: () => {
+        throw new Error("role lookup failed");
+      },
+    });
+
+    app.get("/", authorize("articles:read"));
+    app.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
+      response.status(500).json({ message: (error as Error).message });
+    });
+
+    await request(app).get("/").expect(500, { message: "role lookup failed" });
+  });
 
   it("forwards custom denial handler errors to Express", async () => {
     const app = expressFactory();
-    const rbac = createPolicy();
-    const { authorize } = createExpressRBAC({
-      rbac,
-      getSubject: () => ({ roles: ["viewer"] }),
+    const { authorize } = createExpressRoleGate({
+      permissions: ["articles:read", "articles:delete"],
+      roles: {
+        viewer: {
+          permissions: ["articles:read"],
+        },
+      },
+      getRoles: () => ["viewer"],
       onDenied: () => {
         throw new Error("denial handler failed");
       },
@@ -261,5 +311,69 @@ describe("createExpressRBAC", () => {
         expect((error as RBACUsageError).code).toBe(code);
       }
     }
+  });
+});
+describe("createExpressRoleGate", () => {
+  it("supports synchronous role extraction once and exposes matching engine decisions", async () => {
+    const getRoles = vi.fn(() => ["editor"] as const);
+    const gate = createExpressRoleGate({
+      permissions: ["articles:read", "articles:update"],
+      roles: {
+        viewer: {
+          permissions: ["articles:read"],
+        },
+        editor: {
+          extends: ["viewer"],
+          permissions: ["articles:update"],
+        },
+      },
+      getRoles,
+    });
+    const middleware = gate.authorize("articles:update");
+    const next = vi.fn();
+    const response = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    } as unknown as Response;
+
+    middleware({} as Request, response, next);
+    await vi.waitFor(() => {
+      expect(next).toHaveBeenCalledTimes(1);
+    });
+
+    expect(getRoles).toHaveBeenCalledTimes(1);
+    expect(gate.rbac.can({ roles: ["editor"] }, "articles:read")).toBe(true);
+    expect(gate.rbac.can({ roles: ["editor"] }, "articles:update")).toBe(true);
+    expect(Object.isFrozen(gate)).toBe(true);
+    expect(response.status).not.toHaveBeenCalled();
+    expect(response.json).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid policies during factory construction", () => {
+    expect(() =>
+      createExpressRoleGate({
+        permissions: ["articles:read"],
+        roles: {
+          viewer: {
+            permissions: ["missing:permission" as never],
+          },
+        },
+        getRoles: () => ["viewer"],
+      }),
+    ).toThrowError(RBACConfigurationError);
+  });
+
+  it("rejects invalid permissions during route registration", () => {
+    const gate = createExpressRoleGate({
+      permissions: ["articles:read"],
+      roles: {
+        viewer: {
+          permissions: ["articles:read"],
+        },
+      },
+      getRoles: () => ["viewer"],
+    });
+
+    expect(() => gate.authorize("articles:delete" as never)).toThrowError(RBACUsageError);
   });
 });

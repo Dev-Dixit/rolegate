@@ -1,14 +1,19 @@
-import { RBACUsageError } from "@rolegate/core";
+import { RBACUsageError, createRBAC } from "@rolegate/core";
 import type {
   AuthorizationDecision,
   NonEmptyReadonlyArray,
   RBAC,
+  RBACConfig,
   RBACSubject,
 } from "@rolegate/core";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 
 type MaybePromise<Value> = Value | Promise<Value>;
 type AuthorizationMode = "single" | "any" | "all";
+type ExpressRoleShape = {
+  readonly permissions: readonly string[];
+  readonly extends?: readonly string[];
+};
 type DeniedDecision<Permission extends string, Role extends string> = Extract<
   AuthorizationDecision<Permission, Role>,
   { readonly allowed: false }
@@ -38,6 +43,28 @@ export type ExpressRBAC<Permission extends string> = {
   authorize(permission: Permission): RequestHandler;
   authorizeAny(...permissions: NonEmptyReadonlyArray<Permission>): RequestHandler;
   authorizeAll(...permissions: NonEmptyReadonlyArray<Permission>): RequestHandler;
+};
+
+export type ExpressRoleGateOptions<
+  Permissions extends NonEmptyReadonlyArray<string>,
+  Roles extends Record<string, ExpressRoleShape>,
+> = RBACConfig<Permissions, Roles> & {
+  readonly getRoles: (
+    request: Request,
+  ) => MaybePromise<readonly NoInfer<Extract<keyof Roles, string>>[] | null | undefined>;
+  readonly onDenied?: (
+    context: ExpressDeniedContext<
+      NoInfer<Permissions[number]>,
+      NoInfer<Extract<keyof Roles, string>>
+    >,
+  ) => MaybePromise<void>;
+};
+
+export type ExpressRoleGate<
+  Permission extends string,
+  Role extends string,
+> = ExpressRBAC<Permission> & {
+  readonly rbac: RBAC<Permission, Role>;
 };
 
 const DEFAULT_UNAUTHORIZED_BODY = {
@@ -151,5 +178,30 @@ export function createExpressRBAC<Permission extends string, Role extends string
     authorizeAll(...permissions: NonEmptyReadonlyArray<Permission>): RequestHandler {
       return createMiddleware("all", permissions);
     },
+  });
+}
+
+export function createExpressRoleGate<
+  const Permissions extends NonEmptyReadonlyArray<string>,
+  const Roles extends Record<string, ExpressRoleShape>,
+>(
+  options: ExpressRoleGateOptions<Permissions, Roles>,
+): ExpressRoleGate<Permissions[number], Extract<keyof Roles, string>> {
+  const { permissions, roles, getRoles, onDenied } = options;
+  const rbac = createRBAC({ permissions, roles });
+  const middleware = createExpressRBAC({
+    rbac,
+    getSubject: async (request) => {
+      const resolvedRoles = await getRoles(request);
+      return resolvedRoles === null || resolvedRoles === undefined
+        ? null
+        : { roles: resolvedRoles };
+    },
+    ...(onDenied ? { onDenied } : {}),
+  });
+
+  return Object.freeze({
+    rbac,
+    ...middleware,
   });
 }
