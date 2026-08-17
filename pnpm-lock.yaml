@@ -50,9 +50,6 @@ importers:
 
   examples/express-basic:
     dependencies:
-      '@rolegate/core':
-        specifier: workspace:^
-        version: link:../../packages/core
       '@rolegate/express':
         specifier: workspace:^
         version: link:../../packages/express

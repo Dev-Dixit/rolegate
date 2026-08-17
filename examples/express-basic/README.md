@@ -17,4 +17,5 @@ curl -X DELETE -H "x-demo-user: admin" http://localhost:3000/articles/1
 ```
 
 The header authentication is intentionally fake and exists only to make the example runnable. A real
-application must verify its session or token before constructing the RBAC subject.
+application must verify its session or token before returning trusted roles from `getRoles`. The
+example uses only `@rolegate/express` and creates its policy and middleware in one factory call.

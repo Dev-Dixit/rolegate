@@ -1,7 +1,7 @@
 import { createRBAC, type PermissionOf, type RoleOf } from "../src/index.js";
 
 const rbac = createRBAC({
-  permissions: ["articles:read", "articles:update"] as const,
+  permissions: ["articles:read", "articles:update"],
   roles: {
     viewer: {
       permissions: ["articles:read"],
@@ -27,7 +27,7 @@ rbac.can({ roles: ["admin"] }, "articles:read");
 rbac.canAny({ roles: ["viewer"] }, []);
 
 createRBAC({
-  permissions: ["articles:read"] as const,
+  permissions: ["articles:read"],
   roles: {
     broken: {
       // @ts-expect-error Role grants must reference the permission catalog.
@@ -37,7 +37,7 @@ createRBAC({
 });
 
 createRBAC({
-  permissions: ["articles:read"] as const,
+  permissions: ["articles:read"],
   roles: {
     viewer: {
       permissions: ["articles:read"],

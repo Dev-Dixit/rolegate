@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@rolegate/core": "workspace:^",
     "@rolegate/express": "workspace:^",
     "express": "^5.1.0"
   },

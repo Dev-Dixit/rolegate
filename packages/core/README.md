@@ -8,7 +8,7 @@ Dependency-free, type-safe role and permission authorization.
 import { createRBAC } from "@rolegate/core";
 
 const rbac = createRBAC({
-  permissions: ["articles:read", "articles:update"] as const,
+  permissions: ["articles:read", "articles:update"],
   roles: {
     viewer: {
       permissions: ["articles:read"],
