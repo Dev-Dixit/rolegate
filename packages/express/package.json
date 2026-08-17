@@ -1,6 +1,6 @@
 {
   "name": "@rolegate/express",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Express 4 and 5 authorization middleware powered by RoleGate.",
   "license": "MIT",
   "repository": {
