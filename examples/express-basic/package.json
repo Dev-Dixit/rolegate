@@ -13,11 +13,11 @@
   },
   "dependencies": {
     "@rolegate/express": "workspace:^",
-    "express": "^5.1.0"
+    "express": "^5.3.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
-    "tsx": "^4.23.12",
+    "tsx": "^4.23.15",
     "typescript": "^5.8.3"
   }
 }
